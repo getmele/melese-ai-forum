@@ -3,11 +3,15 @@ import {
   registerController,
   loginController,
   getCurrentUserController,
+  forgotPasswordController,
+  resetPasswordController,
 } from "../controller/auth.controller.js";
 import { authenticateUser } from "../../../middleware/authentication.js";
 import {
   registerValidation,
   loginValidation,
+  forgotPasswordValidation,
+  resetPasswordValidation,
 } from "../validations/auth.validation.js";
 
 const router = express.Router();
@@ -33,5 +37,27 @@ router.post("/login", loginValidation, loginController);
  * @access Protected
  */
 router.get("/me", authenticateUser, getCurrentUserController);
+
+/**
+ * @route POST /api/auth/forgot-password
+ * @desc Request a password reset email
+ * @access Public
+ */
+router.post(
+  "/forgot-password",
+  forgotPasswordValidation,
+  forgotPasswordController,
+);
+
+/**
+ * @route POST /api/auth/reset-password
+ * @desc Reset password using a valid reset token
+ * @access Public
+ */
+router.post(
+  "/reset-password",
+  resetPasswordValidation,
+  resetPasswordController,
+);
 
 export default router;

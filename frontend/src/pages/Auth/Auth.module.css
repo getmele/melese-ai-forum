@@ -672,3 +672,30 @@
     margin: 1.25rem 0;
   }
 }
+
+/* "Forgot password?" link shown next to the password label on sign-in */
+.auth__forgotLink {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--primary);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+.auth__forgotLink:hover {
+  color: var(--primary-container);
+  text-decoration: underline;
+}
+
+.auth__forgotLink:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Centers the "Forgot password?" link under the Sign In button */
+.auth__forgotRow {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.25rem;
+}

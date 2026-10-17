@@ -6,9 +6,15 @@ import {
   NotFoundError,
   UnauthenticatedError,
 } from "../../../utils/errors/index.js";
+import {
+  generateResetToken,
+  hashResetToken,
+} from "../../../utils/reset-token.js";
+import { sendPasswordResetEmail } from "../../../utils/mailer.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
+const RESET_TOKEN_TTL_MINUTES = 30;
 
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET environment variable is required");
@@ -99,10 +105,14 @@ export const loginService = async ({ email, password }) => {
   }
 
   const user = rows[0];
-
-  if (Number(user.is_active) !== 1) {
-    throw new UnauthenticatedError(
-      "Your account has been deactivated. Contact an administrator.",
+  const expiresAt = new Date(user.reset_token_expires);
+  if (
+    !user.reset_token_expires ||
+    Number.isNaN(expiresAt.getTime()) ||
+    expiresAt <= new Date()
+  ) {
+    throw new BadRequestError(
+      "This reset link is invalid or has expired. Please request a new one.",
     );
   }
 
@@ -164,4 +174,86 @@ export const getCurrentUserService = async (userId) => {
     email: user.email,
     role: user.role,
   };
+};
+
+/**
+ * Starts a password reset. If the email belongs to a registered user,
+ * generates a token, stores its hash + an expiry, and emails a reset
+ * link. Resolves the same way whether or not the email exists, so
+ * this endpoint can't be used to discover which emails are registered
+ * on the forum (a common security requirement for this feature).
+ *
+ * @param {string} email
+ * @returns {Promise<void>}
+ */
+export const requestPasswordResetService = async (email) => {
+  const normalizedEmail = normalizeEmail(email);
+  const sql = "SELECT user_id FROM users WHERE email = ? LIMIT 1";
+  const rows = await safeExecute(sql, [normalizedEmail]);
+
+  // Deliberately silent no-op if there's no matching user -- this is
+  // what prevents the endpoint from leaking which emails have accounts.
+  if (rows.length === 0) return;
+
+  const { rawToken, tokenHash } = generateResetToken();
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000);
+
+  await safeExecute(
+    "UPDATE users SET reset_token_hash = ?, reset_token_expires = ? WHERE user_id = ?",
+    [tokenHash, expiresAt, rows[0].user_id],
+  );
+
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
+
+  await sendPasswordResetEmail({ to: normalizedEmail, resetUrl });
+};
+
+/**
+ * Completes a password reset: verifies the token by comparing its hash
+ * and checking expiry, sets the new password, and clears the token so
+ * the same link can never be used twice.
+ *
+ * @param {Object} params
+ * @param {string} params.token - the raw token from the emailed link
+ * @param {string} params.newPassword
+ * @returns {Promise<void>}
+ * @throws {BadRequestError} If the token is invalid, already used, or expired.
+ */
+export const resetPasswordService = async ({ token, newPassword }) => {
+  const tokenHash = hashResetToken(token);
+
+  const sql =
+    "SELECT user_id, reset_token_expires FROM users WHERE reset_token_hash = ? LIMIT 1";
+  const rows = await safeExecute(sql, [tokenHash]);
+
+  if (rows.length === 0) {
+    throw new BadRequestError(
+      "This reset link is invalid or has already been used.",
+    );
+  }
+
+  const user = rows[0];
+  const expiresAt = new Date(user.reset_token_expires);
+
+  if (
+    !user.reset_token_expires ||
+    Number.isNaN(expiresAt.getTime()) ||
+    expiresAt <= new Date()
+  ) {
+    throw new BadRequestError(
+      "This reset link is invalid or has expired. Please request a new one.",
+    );
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+  // Clear the token in the SAME update that sets the password, so the
+  // link is invalidated the instant it's used -- even if it's reused
+  // a second later.
+  await safeExecute(
+    "UPDATE users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires = NULL WHERE user_id = ?",
+    [hashedPassword, user.user_id],
+  );
 };

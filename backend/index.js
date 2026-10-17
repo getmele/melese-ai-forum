@@ -8,6 +8,7 @@ import {
   ensureAnswerVotesSchema,
   ensureAnswerVectorsSchema,
   ensureNotificationsSchema,
+  ensurePasswordResetSchema,
 } from "./db/migrate.js";
 import cors from "cors";
 
@@ -48,6 +49,9 @@ const startServer = async () => {
 
     // Create the notifications table when missing.
     await ensureNotificationsSchema();
+
+    // Add password-reset columns to users when missing.
+    await ensurePasswordResetSchema();
 
     // Documents stuck in `processing` from a previous run can never finish
     // (their background job died with the old process). Mark them failed.

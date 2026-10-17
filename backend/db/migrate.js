@@ -1,13 +1,13 @@
-import { db } from './config.js';
+import { db } from "./config.js";
 
 /**
  * Applies idempotent column additions needed for the admin role system.
  * Safe to run on every server start: each column is only added when missing.
  */
 export async function ensureAdminSchema() {
-  await ensureColumn('users', 'role', "VARCHAR(20) NOT NULL DEFAULT 'user'");
-  await ensureColumn('users', 'is_active', 'TINYINT(1) NOT NULL DEFAULT 1');
-  await ensureIndex('users', 'idx_users_role', 'role');
+  await ensureColumn("users", "role", "VARCHAR(20) NOT NULL DEFAULT 'user'");
+  await ensureColumn("users", "is_active", "TINYINT(1) NOT NULL DEFAULT 1");
+  await ensureIndex("users", "idx_users_role", "role");
 }
 
 /**
@@ -16,7 +16,7 @@ export async function ensureAdminSchema() {
  */
 export async function ensureAnswerVotesSchema() {
   await ensureTable(
-    'answer_votes',
+    "answer_votes",
     `
     CREATE TABLE IF NOT EXISTS \`answer_votes\` (
       \`user_id\` INT NOT NULL,
@@ -40,7 +40,7 @@ export async function ensureAnswerVotesSchema() {
  */
 export async function ensureAnswerVectorsSchema() {
   await ensureTable(
-    'answer_vectors',
+    "answer_vectors",
     `
     CREATE TABLE IF NOT EXISTS \`answer_vectors\` (
       \`vector_id\` BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -57,11 +57,7 @@ export async function ensureAnswerVectorsSchema() {
     `,
   );
 
-  await ensureColumn(
-    'answer_vectors',
-    'ai_grade',
-    'VARCHAR(16) DEFAULT NULL',
-  );
+  await ensureColumn("answer_vectors", "ai_grade", "VARCHAR(16) DEFAULT NULL");
 }
 
 /**
@@ -70,7 +66,7 @@ export async function ensureAnswerVectorsSchema() {
  */
 export async function ensureNotificationsSchema() {
   await ensureTable(
-    'notifications',
+    "notifications",
     `
     CREATE TABLE IF NOT EXISTS \`notifications\` (
       \`notification_id\` BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -88,6 +84,24 @@ export async function ensureNotificationsSchema() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `,
   );
+}
+
+/**
+ * Adds password-reset columns to `users` when missing.
+ * Safe to run on every server start.
+ */
+export async function ensurePasswordResetSchema() {
+  await ensureColumn(
+    "users",
+    "reset_token_hash",
+    "VARCHAR(255) NULL DEFAULT NULL",
+  );
+  await ensureColumn(
+    "users",
+    "reset_token_expires",
+    "TIMESTAMP NULL DEFAULT NULL",
+  );
+  await ensureIndex("users", "idx_users_reset_token_hash", "reset_token_hash");
 }
 
 async function ensureTable(table, createSql) {
@@ -109,7 +123,9 @@ async function ensureColumn(table, column, definition) {
     [table, column],
   );
   if (columns.length === 0) {
-    await db.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+    await db.query(
+      `ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`,
+    );
     console.log(`[migrate] added column ${table}.${column}`);
   }
 }
@@ -121,7 +137,9 @@ async function ensureIndex(table, indexName, column) {
     [table, indexName],
   );
   if (indexes.length === 0) {
-    await db.query(`ALTER TABLE \`${table}\` ADD INDEX \`${indexName}\` (\`${column}\`)`);
+    await db.query(
+      `ALTER TABLE \`${table}\` ADD INDEX \`${indexName}\` (\`${column}\`)`,
+    );
     console.log(`[migrate] added index ${table}.${indexName}`);
   }
 }

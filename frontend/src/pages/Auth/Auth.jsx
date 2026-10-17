@@ -4,7 +4,7 @@
 import { useState } from "react";
 
 import { motion as Motion, AnimatePresence } from "framer-motion";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Sparkles,
   Code,
@@ -422,6 +422,17 @@ export default function Auth() {
                     )}
                   </button>
                 </div>
+
+                {isLogin && (
+                  <div className={styles.auth__forgotRow}>
+                    <Link
+                      to="/forgot-password"
+                      className={styles.auth__forgotLink}
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                )}
 
                 <div className={styles.auth__divider}>
                   <div className={styles.auth__dividerLine}>

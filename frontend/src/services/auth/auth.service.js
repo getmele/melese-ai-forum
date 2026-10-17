@@ -93,6 +93,46 @@ async function refreshMe() {
 }
 
 /**
+ * Asks the backend to email a password-reset link.
+ * The backend always answers with the same success message, whether or not
+ * the email is registered, so the UI must not hint at which case happened.
+ * @param {string} email - The email address entered on the forgot-password form.
+ * @returns {Promise<string>} The generic confirmation message.
+ */
+async function forgotPassword(email) {
+  try {
+    const response = await apiClient.post("/api/auth/forgot-password", {
+      email,
+    });
+    return (
+      response.data?.message ||
+      "If that email is registered, a reset link has been sent."
+    );
+  } catch (error) {
+    throw handleAuthError(error);
+  }
+}
+
+/**
+ * Completes a password reset using the token from the emailed link.
+ * @param {Object} params
+ * @param {string} params.token - Raw token from the `?token=` query param.
+ * @param {string} params.newPassword - The new plain-text password.
+ * @returns {Promise<string>} The success message from the backend.
+ */
+async function resetPassword({ token, newPassword }) {
+  try {
+    const response = await apiClient.post("/api/auth/reset-password", {
+      token,
+      newPassword,
+    });
+    return response.data?.message || "Password reset successful.";
+  } catch (error) {
+    throw handleAuthError(error);
+  }
+}
+
+/**
  * Centralized error handler for auth service requests.
  */
 function handleAuthError(error) {
@@ -134,4 +174,6 @@ export const authService = {
   getStoredUser,
   isAuthenticated,
   refreshMe,
+  forgotPassword,
+  resetPassword,
 };

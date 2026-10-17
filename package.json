@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/yidnekachewsolomon63-oss/ai-powered-forum/issues"
   },
-  "homepage": "https://github.com/yidnekachewsolomon63-oss/ai-powered-forum#readme"
+  "homepage": "https://github.com/yidnekachewsolomon63-oss/ai-powered-forum#readme",
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
 }
