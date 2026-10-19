@@ -105,16 +105,6 @@ export const loginService = async ({ email, password }) => {
   }
 
   const user = rows[0];
-  const expiresAt = new Date(user.reset_token_expires);
-  if (
-    !user.reset_token_expires ||
-    Number.isNaN(expiresAt.getTime()) ||
-    expiresAt <= new Date()
-  ) {
-    throw new BadRequestError(
-      "This reset link is invalid or has expired. Please request a new one.",
-    );
-  }
 
   const isMatch = await bcrypt.compare(password, user.password_hash);
 
@@ -165,6 +155,11 @@ export const getCurrentUserService = async (userId) => {
     throw new UnauthenticatedError(
       "Your account has been deactivated. Contact an administrator.",
     );
+  }
+  const isMatch = await bcrypt.compare(password, user.password_hash);
+
+  if (!isMatch) {
+    throw new UnauthenticatedError("Invalid email or password");
   }
 
   return {
